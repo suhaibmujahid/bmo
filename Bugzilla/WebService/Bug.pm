@@ -430,6 +430,16 @@ sub _translate_comment {
     count         => $self->type('int',      $comment->count),
   };
 
+  # Add last_change_time only if explicitly requested
+  # Falls back to creation_time if comment was never edited
+  if (filter_wants($filters, 'last_change_time', $types, $prefix)) {
+    my $activity = $comment->activity('newest_to_oldest');
+    my $last_change_time = @$activity > 1
+      ? $activity->[0]->{created_time}
+      : $comment->creation_ts;
+    $comment_hash->{last_change_time} = $self->type('dateTime', $last_change_time);
+  }
+
   if (Bugzilla->params->{use_comment_reactions}) {
     $comment_hash->{reactions} = {};
 
@@ -2742,6 +2752,12 @@ C<time> for consistency with other methods including L</get> and L</attachments>
 For compatibility, C<time> is still usable. However, please note that C<time>
 may be deprecated and removed in a future release.
 
+=item last_change_time
+
+C<dateTime> The time the comment was last edited. If the comment has never been
+edited, this will be the same as C<creation_time>. This field is only returned
+when explicitly requested via C<include_fields>.
+
 =item is_private
 
 C<boolean> True if this comment is private (only visible to a certain
@@ -2788,6 +2804,8 @@ C<creator>.
 =item REST API call added in Bugzilla B<5.0>.
 
 =item C<raw_text> was added in Bugzilla B<6.0>.
+
+=item C<last_change_time> was added in BMO.
 
 =back
 
